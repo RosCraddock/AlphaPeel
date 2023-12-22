@@ -1,0 +1,7 @@
+fm 0 0
+ff 0 0
+mm 0 0
+mf 0 0
+f ff fm
+m mf mm
+p f m

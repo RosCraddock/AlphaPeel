@@ -1,0 +1,19 @@
+Notes
+
+Phase_test ~ Logic Test 01 (Issue #136)
+segregation_test ~ Logic Test 02 (Issue #137)
+recombination_test ~ Logic Test 03 (Issue #138)
+geno_error_test ~ Logic Test 04 (Issue #139)
+ped_error_test ~ Logic Test 05 (Issue #140)
+seq_data_test ~ Logic Test 06 (Issue #141)
+
+
+To Do
+
+- Code to implement the testing consistent with TestClass in Functionality Tests.
+
+- Review segregation_test input - can the segregation probabilities be closer to 0 and 1?
+
+- Inputs for recombination_test, geno_error_test, ped_error_test, and seq_data_test.
+
+- Expected results/Outputs for segregation_test, recomb_test, geno_error_test, seq_data_test.
