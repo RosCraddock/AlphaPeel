@@ -22,7 +22,7 @@ def runPeelingCycles(pedigree, peelingInfo, args, singleLocusMode=False):
                 mfx = ind.MetaFounder
                 if pedigree.AAP.get(mfx) is None:
                     pedigree.AAP[mfx] = np.full(
-                        peelingInfo.nLoci, .5, dtype = np.float32
+                        peelingInfo.nLoci, 0.5, dtype=np.float32
                     )
                 aaf = pedigree.AAP[mfx]
                 aafGeno = ProbMath.getGenotypesFromMaf(aaf)
@@ -33,7 +33,7 @@ def runPeelingCycles(pedigree, peelingInfo, args, singleLocusMode=False):
                 mfx = ind.MetaFounder
                 if pedigree.AAP.get(mfx) is None:
                     pedigree.AAP[mfx] = np.full(
-                        peelingInfo.nLoci, .5, dtype = np.float32
+                        peelingInfo.nLoci, 0.5, dtype=np.float32
                     )
     if args.est_alt_allele_prob:
         PeelingUpdates.updateMaf(pedigree, peelingInfo)
