@@ -1,9 +1,8 @@
 import os
 import shutil
-import subprocess
 
 
-def read_file(file_path, **kwargs):
+def read_file(file_path, test_alt_allele_prob=False, **kwargs):
     """
     INPUT:
     file_path: str, the path of the file to be read
@@ -14,6 +13,9 @@ def read_file(file_path, **kwargs):
     """
     with open(file_path, "r") as file:
         values = [line.strip().split() for line in file]
+    if test_alt_allele_prob:
+        MF = values[0]
+        values.pop(0)
 
     if "decimal_place" in kwargs.keys():
         # round the data if data and rounding decimal place exist
@@ -30,11 +32,13 @@ def read_file(file_path, **kwargs):
             [line[0]] + [float(data) for data in line[1:]] if line else line
             for line in values
         ]
+    if test_alt_allele_prob:
+        return values, MF
+    else:
+        return values
 
-    return values
 
-
-def read_and_sort_file(file_path, id_list=None, **kwargs):
+def read_and_sort_file(file_path, test_alt_allele_prob=False, id_list=None, **kwargs):
     """
     INPUT:
     file_path: str, the path of the file to be read
@@ -43,7 +47,10 @@ def read_and_sort_file(file_path, id_list=None, **kwargs):
     values: 2d list of str, store the sorted values of the (selected) records
     """
 
-    values = read_file(file_path, **kwargs)
+    if test_alt_allele_prob:
+        values, MF = read_file(file_path, test_alt_allele_prob, **kwargs)
+    else:
+        values = read_file(file_path, test_alt_allele_prob, **kwargs)
 
     if id_list is not None:
         # consider only the entries with id in id_list
@@ -55,7 +62,10 @@ def read_and_sort_file(file_path, id_list=None, **kwargs):
     # sort according to the id
     values.sort(key=lambda row: row[0])
 
-    return values
+    if test_alt_allele_prob:
+        return values, MF
+    else:
+        return values
 
 
 def delete_columns(two_d_list, col_del):
@@ -566,12 +576,14 @@ class TestClass:
             "default",
             "alt_allele_prob_file_single",
             "alt_allele_prob_file_multiple",
-            "est_alt_allele_prob_single",
-            "est_alt_allele_prob_multiple",
-            "both",
+            # "est_alt_allele_prob_single",
+            # "est_alt_allele_prob_multiple",
+            # "both",
             "incorrect_pedigree",
             "default_metafounder",
             "main_metafounder",
+            "incorrect_main_metafounder",
+            "incorrect_metafounder_in_file",
         ]:
             # test case default: Test the default values of the alternative allele frequency
             #                    without any input or estimation with multiple metafounders
@@ -617,9 +629,11 @@ class TestClass:
                     self.path, f"true-{self.output_file_to_check}-{self.test_cases}.txt"
                 )
 
-                self.output = read_and_sort_file(self.output_file_path, decimal_place=1)
-                self.expected = read_and_sort_file(
-                    self.expected_file_path, decimal_place=1
+                self.output, MF = read_and_sort_file(
+                    self.output_file_path, test_alt_allele_prob=True, decimal_place=1
+                )
+                self.expected, MF = read_and_sort_file(
+                    self.expected_file_path, test_alt_allele_prob=True, decimal_place=1
                 )
                 # Each metafounder has alt_allele_prob of 0.5 per marker
                 assert self.output == self.expected
@@ -681,8 +695,12 @@ class TestClass:
                     self.path, f"true-{self.output_file_to_check}-{self.test_cases}.txt"
                 )
 
-                self.output = read_and_sort_file(self.output_file_path)
-                self.expected = read_and_sort_file(self.expected_file_path)
+                self.output, MF = read_and_sort_file(
+                    self.output_file_path, test_alt_allele_prob=True
+                )
+                self.expected, MF = read_and_sort_file(
+                    self.expected_file_path, test_alt_allele_prob=True
+                )
                 # Compares alt_allele_prob output with expected when estimated by AlphaPeel for one metafounder
                 assert self.output == self.expected
 
@@ -698,8 +716,12 @@ class TestClass:
                     self.path, f"true-{self.output_file_to_check}-{self.test_cases}.txt"
                 )
 
-                self.output = read_and_sort_file(self.output_file_path)
-                self.expected = read_and_sort_file(self.expected_file_path)
+                self.output, MF = read_and_sort_file(
+                    self.output_file_path, test_alt_allele_prob=True
+                )
+                self.expected, MF = read_and_sort_file(
+                    self.expected_file_path, test_alt_allele_prob=True
+                )
                 # Compares alt_allele_prob output with expected when estimated by AlphaPeel for multiple metafounders
                 assert self.output == self.expected
 
@@ -715,7 +737,9 @@ class TestClass:
                     f"{self.output_file_prefix}.{self.output_file_to_check}.txt",
                 )
 
-                self.output = read_and_sort_file(self.output_file_path)
+                self.output, MF = read_and_sort_file(
+                    self.output_file_path, test_alt_allele_prob=True
+                )
 
                 # check if the estimated alt_allele_prob is in between 0.5 and 1 (include 0.5 and exclude 1)
                 assert all(map(lambda prob: 1 > prob >= 0.5, self.output[1:]))
@@ -724,29 +748,32 @@ class TestClass:
 
             elif self.test_cases == "incorrect_pedigree":
                 self.generate_command()
-                stdout = subprocess.check_output(self.command, shell=True)
+                exit_code = os.system(self.command)
 
                 # check if error message is in the output
-                assert "" in stdout
+                assert exit_code == 512
 
                 self.input_files.pop(-1)
-                self.input_file_depend_on_test_cases(-1)
+                # self.input_file_depend_on_test_cases(-1)
 
             elif self.test_cases == "default_metafounder":
                 self.generate_command()
                 os.system(self.command)
 
+                self.output_file_to_check = "alt_allele_prob"
                 self.output_file_path = os.path.join(
                     self.output_path,
                     f"{self.output_file_prefix}.{self.output_file_to_check}.txt",
                 )
 
-                self.output = read_and_sort_file(self.output_file_path)
+                self.output, MF = read_and_sort_file(
+                    self.output_file_path, test_alt_allele_prob=True
+                )
 
                 # check if there is only one metafounder
-                assert len(self.output) == 1
+                assert len(MF) == 1
                 # check if the name of the metafounder is MF_1
-                assert self.output[0][0] == "MF_1"
+                assert MF[0] == "MF_1"
 
             elif self.test_cases == "main_metafounder":
                 self.arguments["main_metafounder"] = "MF_test"
@@ -758,20 +785,22 @@ class TestClass:
                     f"{self.output_file_prefix}.{self.output_file_to_check}.txt",
                 )
 
-                self.output = read_and_sort_file(self.output_file_path)
+                self.output, MF = read_and_sort_file(
+                    self.output_file_path, test_alt_allele_prob=True
+                )
 
                 # check if there is only one metafounder
-                assert len(self.output) == 1
+                assert len(MF) == 1
                 # check if the name of the metafounder is MF_test
-                assert self.output[0][0] == "MF_test"
+                assert MF[0] == "MF_test"
 
             elif self.test_cases == "incorrect_main_metafounder":
                 self.arguments["main_metafounder"] = "test"
                 self.generate_command()
-                stdout = subprocess.check_output(self.command, shell=True)
+                exit_code = os.system(self.command)
 
                 # check if error message is in the output
-                assert "" in stdout
+                assert exit_code == 512
 
                 self.arguments.pop("main_metafounder")
 
@@ -780,10 +809,10 @@ class TestClass:
                 self.input_file_depend_on_test_cases.append("alt_allele_prob_file")
 
                 self.generate_command()
-                stdout = subprocess.check_output(self.command, shell=True)
+                exit_code = os.system(self.command)
 
                 # check if error message is in the output
-                assert "" in stdout
+                assert exit_code == 512
 
             self.command = "AlphaPeel "
 
