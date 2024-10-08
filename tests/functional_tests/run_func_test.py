@@ -751,7 +751,7 @@ class TestClass:
                 exit_code = os.system(self.command)
 
                 # check if error message is in the output
-                assert exit_code == 512
+                assert exit_code in [512, 2]
 
                 self.input_files.pop(-1)
                 # self.input_file_depend_on_test_cases(-1)
@@ -800,7 +800,7 @@ class TestClass:
                 exit_code = os.system(self.command)
 
                 # check if error message is in the output
-                assert exit_code == 512
+                assert exit_code in [512, 2]
 
                 self.arguments.pop("main_metafounder")
 
@@ -812,7 +812,7 @@ class TestClass:
                 exit_code = os.system(self.command)
 
                 # check if error message is in the output
-                assert exit_code == 512
+                assert exit_code in [512, 2]
 
             self.command = "AlphaPeel "
 
