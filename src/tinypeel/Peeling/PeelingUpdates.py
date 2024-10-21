@@ -44,17 +44,15 @@ def newtonMafUpdates(peelingInfo, AAP, index):
 
     if AAP[index] < 0.01:
         maf = 0.01
-        maf_old = 0.01
     elif AAP[index] > 0.99:
         maf = 0.99
-        maf_old = 0.99
     else:
         maf = AAP[index]
-        maf_old = AAP[index]
 
     iters = 5
     converged = False
     while not converged:
+        maf_old = maf
         delta = getNewtonUpdate(maf_old, peelingInfo, index)
         maf = maf_old + delta
         if maf < 0.01:
