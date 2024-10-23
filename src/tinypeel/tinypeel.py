@@ -17,9 +17,12 @@ import argparse
 def runPeelingCycles(pedigree, peelingInfo, args, singleLocusMode=False):
     # Right now maf _only_ uses the penetrance so can be estimated once.
     if args.alt_allele_prob_file is not None:
+        mf_pedigree = []
         for ind in pedigree:
             if ind.isFounder() and ind.MetaFounder is not None:
                 mfx = ind.MetaFounder
+                if mfx not in mf_pedigree:
+                    mf_pedigree.append(mfx)
                 if pedigree.AAP.get(mfx) is None:
                     pedigree.AAP[mfx] = np.full(
                         peelingInfo.nLoci, 0.5, dtype=np.float32
@@ -27,6 +30,11 @@ def runPeelingCycles(pedigree, peelingInfo, args, singleLocusMode=False):
                 aaf = pedigree.AAP[mfx]
                 aafGeno = ProbMath.getGenotypesFromMaf(aaf)
                 peelingInfo.anterior[ind.idn, :, :] = aafGeno
+        mf_input = pedigree.AAP.copy()
+        # removal of any metafounders not in pedigree
+        for mfx in mf_input:
+            if mfx not in mf_pedigree:
+                del pedigree.AAP[mfx]
     else:
         for ind in pedigree:
             if ind.MetaFounder is not None:

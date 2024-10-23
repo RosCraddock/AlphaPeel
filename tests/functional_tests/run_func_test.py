@@ -584,6 +584,8 @@ class TestClass:
             "main_metafounder",
             "incorrect_main_metafounder",
             "incorrect_metafounder_in_file",
+            "missing_metafounder_in_file",
+            "extra_metafounder_in_file",
         ]:
             # test case default: Test the default values of the alternative allele frequency
             #                    without any input or estimation with multiple metafounders
@@ -610,6 +612,8 @@ class TestClass:
             #           incorrect_metafounder_in_file: Test case when the names of input metafounders
             #                                          in the input alternative allele probability file do not start with MF_,
             #                                          whether an error would be raised
+            #           missing_metafounder_in_file: Test case when a metafounder is present in the pedigree but missing in the input alternative allele probability file.
+            #           extra_metafounder_in_file: Test case when an additional metafounder is present in the input alternative allele probability file.
 
             self.output_file_prefix = f"alt_allele_prob.{self.test_cases}"
 
@@ -753,7 +757,7 @@ class TestClass:
                 # check if error message is in the output
                 assert exit_code in [512, 2]
 
-                self.input_files.pop(-1)
+                # self.input_files.pop(-1)
                 # self.input_file_depend_on_test_cases(-1)
 
             elif self.test_cases == "default_metafounder":
@@ -813,6 +817,53 @@ class TestClass:
 
                 # check if error message is in the output
                 assert exit_code in [512, 2]
+
+            elif self.test_cases == "missing_metafounder_in_file":
+                self.generate_command()
+                os.system(self.command)
+
+                self.output_file_path = os.path.join(
+                    self.output_path,
+                    f"{self.output_file_prefix}.{self.output_file_to_check}.txt",
+                )
+                self.expected_file_path = os.path.join(
+                    self.path,
+                    f"true-{self.output_file_to_check}-{self.test_cases}.txt",
+                )
+
+                self.output, MF = read_and_sort_file(
+                    self.output_file_path, test_alt_allele_prob=True
+                )
+
+                self.expected, MF = read_and_sort_file(
+                    self.expected_file_path, test_alt_allele_prob=True
+                )
+
+                # Check that the default is assigned to any metafounders present in the pedigree but not the alt_allele_prob_file
+                assert self.output == self.expected
+
+            elif self.test_cases == "extra_metafounder_in_file":
+                self.generate_command()
+                os.system(self.command)
+
+                self.output_file_path = os.path.join(
+                    self.output_path,
+                    f"{self.output_file_prefix}.{self.output_file_to_check}.txt",
+                )
+                self.expected_file_path = os.path.join(
+                    self.path,
+                    f"true-{self.output_file_to_check}-{self.test_cases}.txt",
+                )
+
+                self.output, MF = read_and_sort_file(
+                    self.output_file_path, test_alt_allele_prob=True
+                )
+
+                self.expected, MF = read_and_sort_file(
+                    self.expected_file_path, test_alt_allele_prob=True
+                )
+                # Check that the extra is removed from the alt_allele_prob output
+                assert self.output == self.expected
 
             self.command = "AlphaPeel "
 
