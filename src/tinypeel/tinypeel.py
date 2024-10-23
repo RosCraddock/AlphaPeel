@@ -35,6 +35,12 @@ def runPeelingCycles(pedigree, peelingInfo, args, singleLocusMode=False):
         for mfx in mf_input:
             if mfx not in mf_pedigree:
                 del pedigree.AAP[mfx]
+                print(
+                    mfx,
+                    "is not in the pedigree. The alternative allele probability for ",
+                    mfx,
+                    " has been ignored.",
+                )
     else:
         for ind in pedigree:
             if ind.MetaFounder is not None:
