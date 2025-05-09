@@ -72,7 +72,33 @@ def writeOutParamaters(peelingInfo):
         args.out_file + ".rec_prob.txt", np.empty((1, 1)), fmt="%f"
     )  # not be realized, just as a placeholder
     # np.savetxt(args.out_file + ".trans", peelingInfo.transmissionRate, fmt = "%f")
-    np.savetxt(args.out_file + ".alt_allele_prob.txt", peelingInfo.maf, fmt="%f")
+    # np.savetxt(args.out_file + ".alt_allele_prob.txt", peelingInfo.maf, fmt="%f")
+
+
+def writeOutAltAlleleProb(pedigree):
+    args = InputOutput.args
+
+    # Custom sorting key to extract numeric part of metafounder keys if it's an integer
+    def sort_key(mf_key):
+        part = mf_key.split("_")[1]
+        return (0, int(part)) if part.isdigit() else (1, part)
+
+    # Order the metafounders: MF_1, MF_2, ..., MF_11, etc., otherwise keep original order
+    sorted_AAP = dict(sorted(pedigree.AAP.items(), key=lambda item: sort_key(item[0])))
+    sorted_MF = list(sorted_AAP.keys())
+    # Combine data into a single 2D array
+    combined_AAP = np.hstack(
+        [sorted_AAP[key].reshape(pedigree.nLoci, -1) for key in sorted_MF]
+    )
+    # Save into text file with metafounders heading columns
+    np.savetxt(
+        args.out_file + ".alt_allele_prob.txt",
+        combined_AAP,
+        delimiter="\t",
+        fmt="%.2f",
+        header="\t".join(sorted_MF),
+        comments="",
+    )
 
 
 def writeGenotypes(pedigree, genoProbFunc, isSexChrom):
@@ -85,39 +111,55 @@ def writeGenotypes(pedigree, genoProbFunc, isSexChrom):
         )
     if args.geno_prob:
         writeGenoProbs(pedigree, genoProbFunc, args.out_file + ".geno_prob.txt")
-    if args.geno_threshold and args.geno:
-        for thresh in args.geno_threshold:
-            if thresh < 1 / 3:
-                thresh = 1 / 3
+    if args.geno:
+        geno_threshold_list = []
+        if args.geno_threshold:
+            for thresh in args.geno_threshold:
+                if thresh < 1 / 3:
+                    geno_threshold_list.append(1 / 3)
+                else:
+                    geno_threshold_list.append(thresh)
+        else:
+            geno_threshold_list.append(1 / 3)
+
+        for threshold in geno_threshold_list:
             if args.binary_call_file:
                 writeBinaryCalledGenotypes(
                     pedigree,
                     genoProbFunc,
                     isSexChrom,
-                    args.out_file + ".called." + str(thresh),
-                    thresh,
+                    args.out_file + ".called." + str(threshold),
+                    threshold,
                 )
             else:
                 writeCalledGenotypes(
                     pedigree,
                     genoProbFunc,
                     isSexChrom,
-                    args.out_file + ".geno_" + str(thresh) + ".txt",
-                    thresh,
+                    args.out_file + ".geno_" + str(threshold) + ".txt",
+                    threshold,
                 )
 
-    if args.hap_threshold and args.hap:
-        for thresh in args.hap_threshold:
-            if thresh < 1 / 2:
-                thresh = 1 / 2
+    if args.hap:
+        hap_threshold_list = []
+        if args.hap_threshold:
+            for thresh in args.hap_threshold:
+                if thresh < 1 / 2:
+                    hap_threshold_list.append(1 / 2)
+                else:
+                    hap_threshold_list.append(thresh)
+        else:
+            hap_threshold_list.append(1 / 2)
+
+        for threshold in hap_threshold_list:
             if args.binary_call_file:
                 pass  # this function is not applied
             else:
                 writeCalledPhase(
                     pedigree,
                     genoProbFunc,
-                    args.out_file + ".hap_" + str(thresh) + ".txt",
-                    thresh,
+                    args.out_file + ".hap_" + str(threshold) + ".txt",
+                    threshold,
                 )
 
 
