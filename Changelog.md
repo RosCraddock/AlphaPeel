@@ -1,52 +1,43 @@
 
 # Changelog
 
-## Contributors
 
-* Audrey Martin
-* augustusgrant (GitHub user)
-* Gregor Gorjanc
-* Ros Craddock
-* Xinger Tang
-* Yu Zhang
+## [1.2.0] - 2025-03-21
+**New features**
+* allow metafounders, defined as “MF_”, in the pedigree file input ({pr}`175`, {user}`RosCraddock`, {user}`XingerTang`)
+
+* added ``alt_allele_prob_file`` to allow user-inputted alternative allele frequencies for each metafounder and loci. For now, these are restricted to be between 0.01 and 0.99 ({pr}`175`, {user}`RosCraddock`, {user}`XingerTang`)
+
+* added ``main_metafounder`` to allow user to assign the default metafounder to use where a metafounder has not been assigned to a founder in the pedigree ({pr}`175`, {user}`RosCraddock`, {user}`XingerTang`)
+
+* added ``update_alt_allele_prob`` to allow the base alternative allele frequencies to be updated after each peeling cycle based on the mean of the founders within the assigned metafounder ({pr}`182`, {user}`RosCraddock`)
+
+**Bug fixes**
+* Fixed bug due to setuptools package being updated for all wheel file naming to follow binary distribution specification (i.e all lower case) and updated documentation ({pr}`182`, {user}`RosCraddock`)
+
+**Maintenance**
+* User-warnings and documentation updates for metafounder implementation and estimation of alternative allele frequency ({pr} `152`, {pr}`175`, {pr}`182`, {user}`RosCraddock`, {user}`XingerTang`)
+
+* Functional and accuracy tests for metafounder implementation ({pr}`156`, {pr}`182`, {user}`XingerTang`, {user}`RosCraddock`)
+
+* Updated reference to tinyhouse ({pr}`177`, {user}`XingerTang`)
 
 
-## AlphaPeel 1.1.8
+## [1.1.6] - 2024-10-22
+**New features**
+* Addition of map file input for non-hybrid mode ({pr}`154`, {user}`XingerTang`)
 
-* Fixed bug due to setuptools package being updated for all wheel file naming to follow binary distribution specification (i.e all lower case).
+**Bug fixes**
+* resolved bug to produce output file with ``-hap`` and ``-geno`` ({pr}`157`, {user}`AprilYUZhang`)
 
-* Updated documentation for the bug.
+**Maintenance**
+* set default hap and geno threshold as 1/3 when calling genotypes ({pr}`157`, {user}`AprilYUZhang`)
 
-## AlphaPeel 1.1.7
+## [1.1.5] - 2023-12-01
+**New features**
+* Addition of output options: ``seg_prob``, ``geno``, ``hap_threshold``, ``geno_prob``, ``est_rec_prob`` ({pr}`###`, {user}`###`)
 
-* allow metafounders, defined as “MF_”, in the pedigree file input.
-
-* added ``alt_allele_prob_file`` to allow user-inputted alternative allele frequencies for each metafounder and loci. For now, these are restricted to be between 0.01 and 0.99.
-
-* added main_metafounder to allow user to assign the default metafounder to use where a metafounder has not been assigned to a founder in the pedigree.
-
-* added ``update_alt_allele_prob`` to allow the base alternative allele frequencies to be updated after each peeling cycle based on the mean of the founders within the assigned metafounder.
-
-* User-warnings for metafounder implementation.
-
-* Documentation updates for metafounder and estimation of alternative allele frequency.
-
-* Functional and accuracy tests for metafounder implementation.
-
-* Metafounder simulation code via AlphaSimR for testing.
-
-* Updated reference to tinyhouse.
-
-## AlphaPeel 1.1.6
-
-* set default hap and geno threshold as 1/3 when calling genotypes.
-
-* resolved bug to produce output file with ``-hap`` and ``-geno``.
-
-* Addition of map file input for non-hybrid mode.
-
-## AlphaPeel 1.1.5
-
+**Maintenance**
 * Updates in option and file names. These include:
 
   * ``no_dosages`` to ``no_dosage``
@@ -55,26 +46,26 @@
   * ``haps`` to ``phased_geno_prob``
   * ``pedigree`` to ``ped_file``
   * ``genotypes`` to ``geno_file``
-  * and more, for all changes please visit: https://github.com/AlphaGenes/AlphaPeel/issues/113#issue-1935197000
- 
-* Addition of output options: ``seg_prob``, ``geno``, ``hap_threshold``, ``geno_prob``, ``est_rec_prob``.
+  * and more, for all changes please visit: https://github.com/AlphaGenes/AlphaPeel/issues/113#issue-1935197000 ({pr}`105`, {pr}`115`, {pr}`122`, {user}`XingerTang`, {user}`AprilYuZhang`)
 
-* Updates the documentation and help functions.
+* Updates the documentation and help functions ({pr}`88`, {pr}`119`, {user}`XingerTang`, {user}`AprilYuZhang`).
 
-* Updates to accuracy and functional tests for new argument names.
+* Updates to accuracy and functional tests for new argument names ({pr}`126`, {pr}`130`, {pr}`131`, {user}`XingerTang`).
 
-## AlphaPeel 1.1.4
+## [1.1.4] - 2023-08-25
+**New features**
+* Implementation of functional and accuracy testing with pytest ({pr}`53`, {user}`XingerTang`)
 
-* Implementation of functional and accuracy testing with pytest.
+* Implementation of pre-committ protocol through Black and Flake8 ({pr}`40`, {user}`XingerTang`)
 
-* Implementation of pre-committ protocol through Black and Flake8.
+* Implementation of cross-platform tests workflow through github actions ({pr}`59`, {user}`XingerTang`)
 
-* Implementation of cross-platform tests workflow through github actions.
+* Added instructions for how to contribute to AlphaPeel ({pr}`27`, {pr}`31`, {user}`XingerTang`)
 
-* Update theme for the HTML documentation.
+**Bug Fixes**
+* Fixed bug on the loading of submodule ({pr}`22`, {user}`XingerTang`)
 
-* Added instructions for how to contribute to AlphaPeel.
+**Maintenance**
+* Update theme for the HTML documentation ({pr}`38`, {user}`XingerTang`)
 
-* Fixed bug on the loading of submodule.
-
-* Modified the URL for installation.
+* Modified the URL for installation ({pr}`11`, {user}`XingerTang`)
