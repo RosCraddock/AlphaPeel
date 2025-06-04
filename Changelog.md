@@ -35,7 +35,7 @@
 
 ## [1.1.5] - 2023-12-01
 **New features**
-* Addition of output options: ``seg_prob``, ``geno``, ``hap_threshold``, ``geno_prob``, ``est_rec_prob`` ({pr}`###`, {user}`###`)
+* Addition of output options: ``geno``, and ``hap_threshold`` ({pr}`119`, {user}``AprilYuZhang`)
 
 **Maintenance**
 * Updates in option and file names. These include:
