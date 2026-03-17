@@ -426,7 +426,7 @@ class jit_peelingInformation(object):
     def getGenoProbs(self, idn, sex):
         """Estimates the genotype probabilities for a given individual.
 
-        :param ind: Internal number for an individual in the pedigree.
+        :param idn: Internal number for an individual in the pedigree.
         :type idn: int
         :param sex: 0 is male; 1 is female
         :type sex: int
