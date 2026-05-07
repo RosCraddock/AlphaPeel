@@ -42,29 +42,36 @@ def createPeelingInfo(pedigree, args, createSeg=True, phaseFounder=False):
     # Information about the peeling positions are handled elsewhere.
     peelingInfo.positions = None
     if args.map_file:
-        peelingInfo.positions = np.array(
-            InputOutput.readMapFile(args.map_file, args.startsnp, args.stopsnp)[2],
-            dtype=np.int64,
-        )
+        if args.stopsnp is not None:
+            peelingInfo.positions = np.array(
+                InputOutput.readMapFile(args.map_file, args.startsnp, args.stopsnp + 1)[
+                    2
+                ],
+                dtype=np.int64,
+            )
+        else:
+            peelingInfo.positions = np.array(
+                InputOutput.readMapFile(args.map_file)[2], dtype=np.int64
+            )
 
-    mutation_rate = args.mutation_rate
+    mut_prob = args.mut_prob
     # Generate the segregation tensors.
-    peelingInfo.segregationTensor = ProbMath.generateSegregation(mu=mutation_rate)
+    peelingInfo.segregationTensor = ProbMath.generateSegregation(mu=mut_prob)
     peelingInfo.segregationTensor_norm = ProbMath.generateSegregation(
-        mu=mutation_rate, partial=True
+        mu=mut_prob, partial=True
     )  # Partial gives the normalizing constant.
     if peelingInfo.isXChr:
         peelingInfo.segregationTensorXY = ProbMath.generateSegregationXYChrom(
-            mu=mutation_rate
+            mu=mut_prob
         )
         peelingInfo.segregationTensorXY_norm = ProbMath.generateSegregationXYChrom(
-            mu=mutation_rate, partial=True
+            mu=mut_prob, partial=True
         )
         peelingInfo.segregationTensorXX = ProbMath.generateSegregationXXChrom(
-            mu=mutation_rate
+            mu=mut_prob
         )
         peelingInfo.segregationTensorXX_norm = ProbMath.generateSegregationXXChrom(
-            mu=mutation_rate, partial=True
+            mu=mut_prob, partial=True
         )
 
     peelingInfo.genoError[:] = args.geno_error_prob

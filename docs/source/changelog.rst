@@ -1,13 +1,27 @@
 =========
 Changelog
 =========
-[1.3.1] - 2026-03-05
-====================
+
+.. 
+  If you are add a new entry to the changelog, please follow the format of the existing entries and 
+  add your changes to the top of the file under the [Unreleased] section. 
+  Please also include the pull request number and the GitHub username(s) of the contributor(s) who made the change.
+
+[Unreleased] - 2026-04-??
+=========================
 
 New features
 ------------
 * Allow a founding individual to have two different metafounders, e.g., one for the paternal lineage and one for the maternal lineage
   (:pr:`222`, :user:`RosCraddock`, :user:`gregorgorjanc`, :user:`XingerTang`).
+
+* Add a version option to the command line interface
+  (:pr:`237`, :user:`XingerTang`).
+
+
+Bug fixes
+---------
+* Fix bug for subsetting snps with map file input (:pr:`241`, :user:`XingerTang`).
 
 Maintenance
 -----------
@@ -25,15 +39,33 @@ Maintenance
 
     - Reformatted the ``alt_allele_prob_file`` input to match the outputted ``alt_allele_prob_file``.
 
-
-[Unreleased] - 2026-02-12
-=========================
-
-Maintenance
------------
-
 * Updated the documentation to clarify inputs, outputs, and parameters
   (:pr:`219`, :user:`gregorgorjanc`).
+
+* Add collaboration guidelines to the documentation
+  (:pr:`224`, :user:`XingerTang`, :user:`RosCraddock`, :user:`AprilYuZhang`, :user:`gregorgorjanc`).
+
+* Updated the documentation to add more techincal instructions for developers and contributors
+  (:pr:`237`, :user:`XingerTang`).
+
+* Round up threshold for output file names (:pr:`246`, :user:`XingerTang`).
+
+* Update help messages for command line arguments (:pr:`246`, :user:`XingerTang`).
+
+* Rename option ``mutation_rate`` to ``mut_prob`` for consistency with other options
+  (:pr:`246`, :user:`XingerTang`).
+
+* Add explanation of ``no_phase_founder`` option in the documentation
+  (:pr:`246`, :user:`XingerTang`).
+
+* Add explanation of ``rec_length`` option in the documentation
+  (:pr:`246`, :user:`XingerTang`).
+
+* Add explanation of file format for the ``seg_map_file`` in the documentation
+  (:pr:`246`, :user:`XingerTang`).
+
+* Remove extra empty lines in the genotype probabilities output file
+  (:pr:`246`, :user:`XingerTang`).
 
 [1.3.0] - 2026-02-05
 ====================
