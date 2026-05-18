@@ -137,9 +137,14 @@ def writePhenoPenetrance(pedigree):
     """
     args = InputOutput.args
     np.savetxt(
-        args.out_file + ".pheno_penetrance.txt", pedigree.phenoPenetrance, fmt="%.2f"
+        args.out_file + ".pheno_penetrance.txt", pedigree.estPhenoPenetrance, fmt="%.2f"
     )
 
+def writeWeibullParameters(pedigree):
+    args = InputOutput.args
+    np.savetxt(
+        args.out_file + ".weibull_parameters.txt", pedigree.weibullParams, fmt="%f"
+    )
 
 def writeGenotypes(pedigree, genoProbFunc, isXChr):
     """Writes out the genotypes for each individual. Format depends on user input and arguments.

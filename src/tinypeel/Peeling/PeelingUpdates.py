@@ -1,6 +1,8 @@
 from numba import jit
 import numpy as np
 
+from scipy.optimize import minimize
+
 from ..tinyhouse import ProbMath
 
 from . import PeelingInfo
@@ -38,12 +40,22 @@ def updateMaf(pedigree, peelingInfo):
         AAP = pedigree.AAP[mfx]
         for i in range(peelingInfo.nLoci):
             AAP[i] = newtonMafUpdates(peelingInfo, AAP, i)
-
-        mafGeno = ProbMath.getGenotypesFromMaf(AAP)
-        for ind in pedigree:
-            if ind.MetaFounder == mfx and ind.isFounder():
-                peelingInfo.anterior[ind.idn, :, :] = mafGeno
         pedigree.AAP[mfx] = AAP.astype(np.float32)
+        
+        
+    for ind in pedigree:
+        if ind.MetaFounder is not None and ind.isFounder():
+            AAP = {
+                k: np.zeros(peelingInfo.nLoci, dtype=np.float32)
+                for k in ind.MetaFounder
+            }
+            for mfx in ind.MetaFounder:
+                AAP[mfx] = pedigree.AAP[mfx]
+            if len(ind.MetaFounder) == 2:
+                mafGeno = ProbMath.getGenotypesFromMultiMaf(AAP)
+            else:
+                mafGeno = ProbMath.getGenotypesFromMaf(AAP[mfx])
+            peelingInfo.anterior[ind.idn, :, :] = mafGeno
 
 
 def newtonMafUpdates(peelingInfo, AAP, index):
@@ -265,13 +277,35 @@ def updatePenetrance(pedigree, peelingInfo, args):
         )
 
         if ind.phenotype is not None:
-            peelingInfo.penetrance[
+            if ind.indPhenoPenetrance is not None:
+                #print("UPDATING PENETRANCE WITH INDIVIDUAL PHENOTYPE PENETRANCE")
+                peelingInfo.penetrance[
+                ind.idn, :, :
+            ] = ProbMath.updateGenoProbsFromPhenotype(
+                peelingInfo.penetrance[ind.idn, :, :],
+                ind.phenotype,
+                ind.indPhenoPenetrance,
+            )
+            elif pedigree.estPhenoPenetrance is None:
+                print("UPDATING PENETRANCE WITH FIXED PHENOTYPE PENETRANCE")
+                peelingInfo.penetrance[
                 ind.idn, :, :
             ] = ProbMath.updateGenoProbsFromPhenotype(
                 peelingInfo.penetrance[ind.idn, :, :],
                 ind.phenotype,
                 pedigree.phenoPenetrance,
             )
+            else:
+                print("UPDATING PENETRANCE WITH ESTIMATED PHENOTYPE PENETRANCE")
+                peelingInfo.penetrance[
+                ind.idn, :, :
+            ] = ProbMath.updateGenoProbsFromPhenotype(
+                peelingInfo.penetrance[ind.idn, :, :],
+                ind.phenotype,
+                pedigree.estPhenoPenetrance,
+            )
+
+            
 
         if ind.isGenotypedFounder() and phaseFounder and ind.genotypes is not None:
             loci = PeelingInfo.getHetMidpoint(ind.genotypes)
@@ -396,10 +430,10 @@ def updatePhenoPenetrance(pedigree, peelingInfo):
     :type pedigree: class:`tinyhouse.Pedigree.Pedigree()`
     :param peelingInfo: Peeling information container.
     :type peelingInfo: class:`PeelingInfo.jit_peelingInformation`
-    :return: None. The function updates the pedigree.phenoPenetrance attribute with the new phenotype penetrance matrix.
+    :return: None. The function updates the pedigree.estPhenoPenetrance attribute with the new phenotype penetrance matrix.
     """
     # Credit to Kinghorn (2003) A SIMPLE METHOD TO DETECT A SINGLE GENE THAT DETERMINES ACATEGORICAL TRAIT WITH INCOMPLETE PENETRANCE
-    rgPheno = pedigree.phenoPenetrance.shape[1]  # Range of phenotype values
+    rgPheno = pedigree.estPhenoPenetrance.shape[1]  # Range of phenotype values
     denominator = np.full(
         (4, pedigree.nLoci), 0, dtype=np.float32
     )  # Sum of the genotypes across individuals with any phenotype data
@@ -420,11 +454,11 @@ def updatePhenoPenetrance(pedigree, peelingInfo):
     # pedigree.phenoPenetrance[:, mask] = contributions[:, mask] / counts[mask]
 
     for pheno in range(rgPheno):
-        pedigree.phenoPenetrance[:, pheno] = contributions[:, pheno] / denominator[:, 0]
+        pedigree.estPhenoPenetrance[:, pheno] = contributions[:, pheno] / denominator[:, 0]
 
     # Normalize the contributions to get the penetrance matrix.
-    pedigree.phenoPenetrance = pedigree.phenoPenetrance / np.sum(
-        pedigree.phenoPenetrance, 1, keepdims=True
+    pedigree.estPhenoPenetrance = pedigree.estPhenoPenetrance / np.sum(
+        pedigree.estPhenoPenetrance, 1, keepdims=True
     )
 
 
@@ -454,6 +488,133 @@ def updatePhenoPenetrance_ind(
             denominator += genoProbs
             contributions[:, pheno] += genoProbs[:, 0]
 
+def _sigmoid(x):
+    x = np.clip(x, -40.0, 40.0)
+    return 1.0 / (1.0 + np.exp(-x))
+
+
+def _to_transformed(params):
+    # params = [k, lam, alpha, e] in natural space
+    k, lam, alpha, e = params
+    eps = 1e-10
+    k = np.clip(k, eps, 1.0 - eps)
+    e = np.clip(e, eps, 1.0 - eps)
+    lam = max(lam, eps)
+    alpha = max(alpha, eps)
+
+    t_k = np.log(k / (1.0 - k))
+    t_lam = np.log(lam)
+    t_alpha = np.log(alpha)
+    t_e = np.log(e / (1.0 - e))
+    return np.array([t_k, t_lam, t_alpha, t_e], dtype=np.float64)
+
+
+def _from_transformed(theta):
+    # theta = [t_k, t_lam, t_alpha, t_e]
+    t_k, t_lam, t_alpha, t_e = theta
+    k = _sigmoid(t_k)
+    e = _sigmoid(t_e)
+    lam = np.exp(np.clip(t_lam, -30.0, 15.0))
+    alpha = np.exp(np.clip(t_alpha, -10.0, 6.0))
+    return k, lam, alpha, e
+
+
+def _negative_log_likelihood_transformed(theta, pheno, age, genoProb):
+    k, lam, alpha, e = _from_transformed(theta)
+    eps = 1e-10
+
+    age = np.clip(age, eps, None)
+    log_age = np.log(age)
+
+    # Stable age**alpha
+    age_alpha = np.exp(np.clip(alpha * log_age, -100.0, 100.0))
+    hazard = np.clip(lam * age_alpha, 0.0, 700.0)
+    f_t = (1.0 - k) * (1.0 - np.exp(-hazard))
+
+    genoProb = np.clip(genoProb, eps, 1.0 - eps)
+    p_case = genoProb * f_t + (1.0 - genoProb) * e
+    p_case = np.clip(p_case, eps, 1.0 - eps)
+
+    return -np.sum(pheno * np.log(p_case) + (1.0 - pheno) * np.log(1.0 - p_case))
+
+
+def _fit_weibull_lbfgsb_transformed(pheno, age, genoProb, init_params, max_iters=500):
+    x0 = _to_transformed(init_params)
+
+    # Bounds are in transformed space
+    bounds = [
+        (-8.0, 8.0),    # t_k  -> k approx [3e-4, 0.9997]
+        (-20.0, 8.0),   # t_lam -> lam approx [2e-9, 2980]
+        (-6.0, 4.0),    # t_alpha -> alpha approx [0.0025, 54.6]
+        (-8.0, 8.0),    # t_e
+    ]
+
+    res = minimize(
+        _negative_log_likelihood_transformed,
+        x0,
+        args=(pheno, age, genoProb),
+        method="L-BFGS-B",
+        bounds=bounds,
+        options={"maxiter": max_iters, "ftol": 1e-10},
+    )
+
+    if not res.success:
+        print("L-BFGS-B warning:", res.message)
+
+    k, lam, alpha, e = _from_transformed(res.x)
+    return k, lam, alpha, e
+def updateIndPhenoPenetrance(pedigree, peelingInfo):
+
+    pheno_all = []
+    age_all = []
+    genoProb_all = []
+
+    for ind in pedigree:
+        if ind.phenotype is None:
+            continue
+
+        pheno = [int(np.asarray(p).reshape(-1)[0]) for p in ind.phenotype]
+        age = [float(np.asarray(a).reshape(-1)[0]) for a in ind.age] if ind.age is not None else [0.0] * len(pheno)
+        p_g3 = [float(peelingInfo.getGenoProbs(ind.idn)[3, 0])] * len(pheno)
+
+        pheno_all.extend(pheno)
+        age_all.extend(age)
+        genoProb_all.extend(p_g3)
+    
+        
+
+    if len(pheno_all) == 0:
+        print("No phenotype records found; skipping update.")
+        return
+    
+    pheno_all = np.asarray(pheno_all, dtype=np.float64)
+    age_all = np.maximum(np.asarray(age_all, dtype=np.float64), 1e-8) # Avoid zero ages for numerical stability
+    genoProb_all = np.asarray(genoProb_all, dtype=np.float64)
+
+
+    print(pedigree.weibullParams)
+    k, lam, alpha, e = _fit_weibull_lbfgsb_transformed(
+    pheno_all, age_all, genoProb_all, pedigree.weibullParams, max_iters=500
+    )
+    pedigree.weibullParams = np.array([k, lam, alpha, e], dtype=np.float32)
+    print("Updated individual phenotype penetrance parameters:", pedigree.weibullParams)
+
+    # Update the individual phenotype penetrance matrix based on the new parameters.
+    # For now, will only update the two columns of the fourth row
+    for ind in pedigree:
+        if ind.phenotype is not None:
+            for r in range(len(ind.phenotype)):
+                age = float(np.asarray(ind.age[r]).reshape(-1)[0])
+                f_t = (1.0 - pedigree.weibullParams[0]) * (1.0 - np.exp(-pedigree.weibullParams[1] * np.power(age, pedigree.weibullParams[2])))
+                f_t = np.float32(np.clip(f_t, 1e-8, 1-1e-8))  # f_t must be between 0 and 1
+                ind.indPhenoPenetrance[r][3, 0] = 1-f_t # P(unaffected | g=3) = 1 - f(t)
+                ind.indPhenoPenetrance[r][3, 1] = f_t # P(affected | g=3) = f(t)
+                ind.indPhenoPenetrance[r][0, 0] = 1 -pedigree.weibullParams[3]
+                ind.indPhenoPenetrance[r][0, 1] = pedigree.weibullParams[3]
+                ind.indPhenoPenetrance[r][1, 0] = 1 -pedigree.weibullParams[3]
+                ind.indPhenoPenetrance[r][1, 1] = pedigree.weibullParams[3]
+                ind.indPhenoPenetrance[r][2, 0] = 1 -pedigree.weibullParams[3]
+                ind.indPhenoPenetrance[r][2, 1] = pedigree.weibullParams[3]
 
 #
 # NOTE: The following code is designed to estimate the recombination rate between markers.

@@ -94,7 +94,16 @@ def runPeelingCycles(pedigree, peelingInfo, args, singleLocusMode=False):
             warnings.warn(
                 "-est_start_alt_allele_prob will overwrite any differences between metafounders. To avoid this, please use -est_alt_allele_prob instead"
             )
+        print("TESTING: est_start_alt_allele_prob is triggered in the code.")
         PeelingUpdates.updateMaf(pedigree, peelingInfo)
+    if args.est_pheno_penetrance_prob:
+            if args.phenoPenetrance is None or args.phenotype is None:
+                warnings.warn(
+                    "Both -pheno_penetrance_prob_file and -pheno_file are required to update the phenotype penetrance probabilities. Skipping update."
+                )
+                args.est_pheno_penetrance_prob = False
+            else:
+                pedigree.estPhenoPenetrance=pedigree.phenoPenetrance.copy()
     for i in range(args.n_cycle):
         print("Cycle ", i)
         peelingCycle(pedigree, peelingInfo, args=args, singleLocusMode=singleLocusMode)
@@ -104,16 +113,15 @@ def runPeelingCycles(pedigree, peelingInfo, args, singleLocusMode=False):
         # if args.esttransitions:
         #     print("Estimating the transmission rate is currently a disabled option")
         # PeelingUpdates.updateSeg(peelingInfo) #Option currently disabled.
-        if args.est_geno_error_prob or args.est_seq_error_prob:
-            PeelingUpdates.updatePenetrance(pedigree, peelingInfo, args)
         if args.est_pheno_penetrance_prob:
-            if args.phenoPenetrance is None or args.phenotype is None:
-                warnings.warn(
-                    "Both -pheno_penetrance_prob_file and -pheno_file are required to update the phenotype penetrance probabilities. Skipping update."
-                )
+            if args.ind_pheno_penetrance_prob_file is not None:
+                print("Updating Individual Phenotype Penetrance")
+                PeelingUpdates.updateIndPhenoPenetrance(pedigree, peelingInfo)
             else:
                 print("Updating Phenotype Penetrance")
                 PeelingUpdates.updatePhenoPenetrance(pedigree, peelingInfo)
+        if args.est_geno_error_prob or args.est_seq_error_prob or args.est_pheno_penetrance_prob:
+            PeelingUpdates.updatePenetrance(pedigree, peelingInfo, args)
         if args.est_alt_allele_prob:
             print("Updating Alternative Allele Frequencies")
             PeelingUpdates.updateMafAfterPeeling(pedigree, peelingInfo)
@@ -403,6 +411,7 @@ def get_input_options():
     -plink_file: bfile
     -geno_file: genotypes
     -pheno_file: phenotype
+    -ind_pheno_penetrance_prob_file: ind_pheno_penetrance_prob_file
     -reference: reference
     -seq_file: seqfile
     -ped_file: pedigree
@@ -441,6 +450,14 @@ def get_input_options():
         type=str,
         nargs="*",
         help="Phenotype file(s) in AlphaGenes format.",
+    )
+    parse_dictionary["ind_pheno_penetrance_prob_file"] = lambda parser: parser.add_argument(
+        "-ind_pheno_penetrance_prob_file",
+        default=None,
+        required=False,
+        type=str,
+        nargs="*",
+        help="Individual phenotype penetrance probabilities file(s) in AlphaGenes format.",
     )
     parse_dictionary["reference"] = lambda parser: parser.add_argument(
         "-reference",
@@ -616,6 +633,7 @@ def getArgs():
             "bfile",
             "genotypes",
             "phenotype",
+            "ind_pheno_penetrance_prob_file",
             "phasefile",
             "seqfile",
             "pedigree",
@@ -797,6 +815,15 @@ def getArgs():
         help="Flag to re-estimate the phenotype penetrance after each peeling cycle.",
     )
     peeling_control_parser.add_argument(
+        "-initial_weibull_params",
+        default=[0.1, 0.2, 1.5, 0.1],
+        required=False,
+        type=float,
+        nargs=4,
+        metavar=("K", "LAMBDA", "ALPHA", "E"),
+        help="Initial Weibull parameters (k lambda alpha e) used to seed individual phenotype penetrance estimation. Default: 0.1 0.2 1.5 0.1.",
+    )
+    peeling_control_parser.add_argument(
         "-no_phase_founder",
         action="store_true",
         required=False,
@@ -839,6 +866,7 @@ def main():
     args.bfile = args.plink_file
     args.genotypes = args.geno_file
     args.phenotype = args.pheno_file
+    args.ind_pheno_penetrance_prob_file = args.ind_pheno_penetrance_prob_file
     args.phenoPenetrance = args.pheno_penetrance_prob_file
     args.phasefile = args.hap_file
     args.seqfile = args.seq_file
@@ -853,6 +881,7 @@ def main():
 
     pedigree = Pedigree.Pedigree()
     InputOutput.readInPedigreeFromInputs(pedigree, args)
+    pedigree.weibullParams = np.array(args.initial_weibull_params, dtype=np.float32)
 
     singleLocusMode = args.method == "single"
     if args.method == "multi" and args.segfile:
@@ -889,17 +918,20 @@ def main():
     if args.pheno_prob:
         if args.phenoPenetrance is None:
             warnings.warn(
-                "Phenotype probabilities are not available. Please provide a penetrance file with -pheno_penetrance_file. -pheno_prob will be ignored."
+                "Phenotype probabilities are not available. Please provide a penetrance file with -pheno_penetrance_prob_file. -pheno_prob will be ignored."
             )
         else:
             PeelingIO.writePhenoProbs(pedigree, phenoProbFunc=peelingInfo.getPhenoProbs)
     if args.pheno_penetrance_prob:
-        if pedigree.phenoPenetrance is None:
+        if pedigree.estPhenoPenetrance is None:
             warnings.warn(
-                "Phenotype penetrance is not available. Please provide a penetrance file with -pheno_penetrance_file. -pheno_penetrance will be ignored."
+                "Phenotype penetrance probabilities were not estimated. `-pheno_penetrance_prob` will be ignored. \n" \
+                "To estimate phenotype penetrance probabilities, input starting values through `-pheno_penetrance_prob_file` and estimate with `-est_pheno_penetrance_prob`."
             )
         else:
             PeelingIO.writePhenoPenetrance(pedigree)
+    if pedigree.weibullParams is not None:
+        PeelingIO.writeWeibullParameters(pedigree)
     if not singleLocusMode and args.seg_prob:
         InputOutput.writeIdnIndexedMatrix(
             pedigree, peelingInfo.segregation, args.out_file + ".seg_prob.txt"

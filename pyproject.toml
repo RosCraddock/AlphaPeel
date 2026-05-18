@@ -20,7 +20,8 @@ classifiers = [
 # correspond to install_requires
 dependencies = [
     "numpy>=1.19",
-    "numba>=0.50.0"
+    "numba>=0.50.0",
+    "scipy"
 ]
 
 [project.scripts]

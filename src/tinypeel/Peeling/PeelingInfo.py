@@ -95,13 +95,26 @@ def createPeelingInfo(pedigree, args, createSeg=True, phaseFounder=False):
         if ind.phenotype is not None:
             # If penetrance is yet updated by genotype inputs, use uniform distribution of 0.25 for all genotypes established in initialisation.
             # TODO: Update for if multiple phenotypes in input or multiple loci in genotypes.
-            peelingInfo.penetrance[
+            # TODO: REVIEW HOW REPEATED PHENOTYPE IS HANDLED IN THE IND PHENOTYPE PENETRANCE FILE. WE HAVE AN PHENOPENETRANCE FOR EACH RECORD NOT INDIVIDUAL, SO NEED TO CHECK IF THIS IS USED CORRECTLY.
+            if ind.indPhenoPenetrance is not None:
+                #print("STARTING PENETRANCE WITH INDIVIDUAL PHENOTYPE PENETRANCE")
+                peelingInfo.penetrance[
                 ind.idn, :, :
-            ] = ProbMath.updateGenoProbsFromPhenotype(
+                ] = ProbMath.updateGenoProbsFromPhenotype(
+                peelingInfo.penetrance[ind.idn, :, :],
+                ind.phenotype,
+                ind.indPhenoPenetrance,
+            )
+            else:
+                #print("STARTING PENETRANCE WITH STARTING PHENOTYPE PENETRANCE")
+                peelingInfo.penetrance[
+                ind.idn, :, :
+                ] = ProbMath.updateGenoProbsFromPhenotype(
                 peelingInfo.penetrance[ind.idn, :, :],
                 ind.phenotype,
                 pedigree.phenoPenetrance,
             )
+            
 
         # Set the genotyping/read status for each individual. This will be used for, e.g., estimating the minor allele frequency.
         if ind.genotypes is not None:

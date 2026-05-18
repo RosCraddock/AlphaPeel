@@ -1064,6 +1064,8 @@ class TestClass:
             "pheno_probs_no_penetrance",
             "pheno_probs_with_penetrance",
             "pheno_file_with_penetrance",
+            "pheno_file_with_ind_penetrance",
+            "repeated_pheno_with_ind_penetrance",
             "repeat_pheno_record",
             "multi_pheno_state",
             "pheno_file_with_multi_loci_geno_file",
@@ -1150,6 +1152,48 @@ class TestClass:
                 assert self.output == self.expected
 
                 self.command = "AlphaPeel "
+            
+            elif self.test_cases == "pheno_file_with_ind_penetrance":
+                self.input_file_depend_on_test_cases.append("ind_pheno_penetrance_prob_file")
+                # Currently this still requires an initial pheno_penetrance_prob_file input to run.
+                # TODO: REVIEW & REMOVE THE REQUIREMENT TO ALSO HAVE A PHENO_PENETRANCE_PROB_FILE INPUT FOR THIS TEST CASE
+                self.generate_command()
+                os.system(self.command)
+
+                self.output_file_to_check = "dosage"
+                self.output_file_path = os.path.join(
+                    self.output_path,
+                    f"{self.output_file_prefix}.{self.output_file_to_check}.txt",
+                )
+                self.expected_file_path = os.path.join(
+                    self.path, f"true-{self.output_file_to_check}-{self.test_cases}.txt"
+                )
+                self.output = read_and_sort_file(self.output_file_path)
+                self.expected = read_and_sort_file(self.expected_file_path)
+                # Compares the outputted dosage file to the expected based on inputted ind_pheno_penetrance_prob_file.
+                assert self.output == self.expected
+                
+                self.command = "AlphaPeel "
+
+            elif self.test_cases == "repeated_pheno_with_ind_penetrance":
+                self.generate_command()
+                os.system(self.command)
+
+                self.output_file_to_check = "dosage"
+                self.output_file_path = os.path.join(
+                    self.output_path,
+                    f"{self.output_file_prefix}.{self.output_file_to_check}.txt",
+                )
+                self.expected_file_path = os.path.join(
+                    self.path, f"true-{self.output_file_to_check}-{self.test_cases}.txt"
+                )
+                self.output = read_and_sort_file(self.output_file_path)
+                self.expected = read_and_sort_file(self.expected_file_path)
+                # Compares the outputted dosage file to the expected based on inputted ind_pheno_penetrance_prob_file.
+                assert self.output == self.expected
+
+                self.command = "AlphaPeel "
+                self.input_file_depend_on_test_cases.pop(-1)
 
             elif self.test_cases == "repeat_pheno_record":
                 # This will update the dosage and pheno_prob file
